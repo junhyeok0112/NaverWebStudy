@@ -1,5 +1,7 @@
 package org.techtown.naverwebstudy
 
+import android.content.ContentValues.TAG
+import android.graphics.PointF
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -10,6 +12,7 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.OnMapReadyCallback
 import com.naver.maps.map.UiSettings
 import com.naver.maps.map.overlay.Marker
+import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
 import org.techtown.naverwebstudy.databinding.ActivityMainBinding
 import retrofit2.Call
@@ -23,7 +26,7 @@ class MainActivity : AppCompatActivity() ,OnMapReadyCallback {
     lateinit var binding: ActivityMainBinding
     lateinit var locationSource: FusedLocationSource
     lateinit var naverMap: NaverMap
-
+    val key = "OdlxmLGpJcnLkvXMDMYcwrmWf6By1UPn4dw0Z5oX8KKc1ymyFtL8L/jwE2JqRJpRU06qE552ZpFv7DW3JC31Vw=="
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -48,7 +51,7 @@ class MainActivity : AppCompatActivity() ,OnMapReadyCallback {
         uiSettings.isLocationButtonEnabled = true           //자바에서는 uiSettings.setLocationButtonEnabled(true);
 
         callRetrofit()
-        var mapCenter:LatLng = naverMap.cameraPosition.target   //카메라상 보이는 곳의 중심 위도,경도 얻을 수 있음
+        //var mapCenter:LatLng = naverMap.cameraPosition.target   //카메라상 보이는 곳의 중심 위도,경도 얻을 수 있음
 
 
     }
@@ -73,30 +76,45 @@ class MainActivity : AppCompatActivity() ,OnMapReadyCallback {
     }
 
     fun callRetrofit(){     //retrofit 호출 함수
+        Log.d("진입" , "callRetrofit 진입")
         val retrofit = Retrofit.Builder()                               //retrofit 객체 생성
             .baseUrl("https://api.odcloud.kr/api/")
             .addConverterFactory(GsonConverterFactory.create())         //json 객체를 java객체로 변경하기 위한 컨버터
             .build()
-        var centerApi:CenterApiInterface = retrofit.create(CenterApiInterface::class.java) //retrofit 객체 사용해서 interface갖는 객체생성
-        centerApi?.getCenter(1,50,"JSON")?.enqueue(object :Callback<DataResult>{
+        var centerApi:CenterApiInterface? = retrofit.create(CenterApiInterface::class.java) //retrofit 객체 사용해서 interface갖는 객체생성
+        centerApi?.getCenter(1,50,key)?.enqueue(object :Callback<CenterData>{
             //파라미터 전달하고 결과는 Callback으로 받음 -> 우리가 정의한 거
-            override fun onResponse(call: Call<DataResult>, response: Response<DataResult>) {
+            override fun onResponse(call: Call<CenterData>, response: Response<CenterData>) {
                 //response로 요청한 데이터에 접근가능 response?.body()?.* 의 형식으로
+                Log.d("성공","성공 : ${response.body()?.data?.size}")
                 var result = response.body()
                 updateMarker(result)
             }
 
-            override fun onFailure(call: Call<DataResult>, t: Throwable) {
+            override fun onFailure(call: Call<CenterData>, t: Throwable) {
                 Log.d("실패" , " 실패")
             }
         })
     }
 
-    fun updateMarker(result: DataResult?){
-        resetMarkerList()
-    }
+    fun updateMarker(result: CenterData?){
+        //resetMarkerList()
+        Log.d("진입" , "실행")
+        if(result?.data == null) {
+            Log.d("실패" , "실행")
+        }
+        if(result?.data != null && result?.data.size>0){
+            Log.d("성공" , "실행")
+            for(data:Items in result.data) {
+                val marker = Marker()
+                marker.position = LatLng(data.lat.toDouble(), data.lng.toDouble())
+                marker.icon = OverlayImage.fromResource(R.drawable.marker_red)
+                marker.anchor = PointF(0.5f ,1.0f)  //anchor 속성을 지정하면 이미지가 가리키는 지점과 마커가 위치한 지점을 일치시킬 수 있습니다.
+                //아이콘에서 앵커로 지정된 지점이 마커의 좌표에 위치하게 됩니다.
+                marker.map = naverMap
 
-    fun resetMarkerList(){
+            }
 
+        }
     }
 }
